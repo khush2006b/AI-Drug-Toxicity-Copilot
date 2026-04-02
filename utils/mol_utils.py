@@ -12,10 +12,9 @@ from typing import Optional
  
 from rdkit import Chem
 from rdkit.Chem import (
-    Descriptors, rdMolDescriptors, Draw, AllChem,
+    Descriptors, rdMolDescriptors, AllChem,
     rdFingerprintGenerator, QED
 )
-from rdkit.Chem.Draw import rdMolDraw2D
 from rdkit.Chem import rdDepictor
 from PIL import Image
  
@@ -143,6 +142,18 @@ def mol_to_image(
                 {},  # highlight_radii (dict)
                 {},  # highlight_linewidth_multipliers (dict)
             )
+    try:
+        from rdkit.Chem.Draw import rdMolDraw2D
+    except Exception:
+        # Drawing backend not available (common when RDKit wheels aren't present
+        # for the current Python version). Return a simple placeholder image so
+        # the app can keep running.
+        from PIL import ImageDraw
+        img = Image.new("RGB", size, color=(14, 17, 23))
+        d = ImageDraw.Draw(img)
+        d.text((12, 12), "Molecule rendering unavailable\n(RDKit drawing backend missing)", fill=(226, 232, 240))
+        return img
+
     rdDepictor.Compute2DCoords(mol)
     drawer = rdMolDraw2D.MolDraw2DSVG(size[0], size[1])
     opts = drawer.drawOptions()
@@ -154,7 +165,6 @@ def mol_to_image(
             rdMolDraw2D.SetDarkMode(opts)
  
     if highlight_atoms:
-        from rdkit.Chem.Draw import rdMolDraw2D as rdd
         hl_atoms = highlight_atoms or []
         hl_bonds = highlight_bonds or []
         a_colors = atom_colors or {a: (1.0, 0.2, 0.2) for a in hl_atoms}
@@ -217,6 +227,14 @@ def mol_to_atom_heatmap(
     This is the flagship visual that impresses judges instantly.
     """
     import numpy as np
+    try:
+        from rdkit.Chem.Draw import rdMolDraw2D
+    except Exception:
+        from PIL import ImageDraw
+        img = Image.new("RGB", size, color=(14, 17, 23))
+        d = ImageDraw.Draw(img)
+        d.text((12, 12), "Atom heatmap unavailable\n(RDKit drawing backend missing)", fill=(226, 232, 240))
+        return img
     rdDepictor.Compute2DCoords(mol)
     n = mol.GetNumAtoms()
     scores = np.array(atom_scores, dtype=float)
