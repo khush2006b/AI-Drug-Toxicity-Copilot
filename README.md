@@ -2,7 +2,9 @@
 
 > **CodeCure Hackathon — Track A: Drug Toxicity Prediction**
 
-A research-grade drug toxicity prediction system combining Graph Attention Networks, XGBoost, SHAP explainability, counterfactual molecule generation, and Claude AI reasoning.
+A research-grade drug toxicity prediction system combining Graph Attention Networks, XGBoost, SHAP explainability, counterfactual molecule generation, and optional Gemini-powered reasoning.
+
+Deployed app: https://ai-drug-toxicity-copilot.streamlit.app
 
 ---
 
@@ -12,7 +14,7 @@ A research-grade drug toxicity prediction system combining Graph Attention Netwo
 SMILES Input
     │
     ├─► RDKit → Molecular Graph ──► GAT (Graph Attention Network) ─┐
-    │                                                               ├─► Ensemble (0.6 GNN + 0.4 XGB)
+    │                                                               ├─► Ensemble (0.35 GNN + 0.65 XGB)
     └─► RDKit → ECFP Fingerprint ─► XGBoost ───────────────────────┘
                                                                     │
                                     ┌───────────────────────────────┤
@@ -21,17 +23,17 @@ SMILES Input
                                     │                               │
                                     └──────────► Counterfactual Molecule Editor
                                                         │
-                                                Claude / Gemini API (Explanation + Report)
+                                                Gemini API (Explanation + Report, optional)
 ```
 
 ## 🚀 Quick Start
 
 ### 1. Install dependencies
 ```bash
-# Python 3.9+ recommended
+# Python 3.11 recommended (matches Streamlit deploy runtime)
 pip install -r requirements.txt
 
-# RDKit (if not installed via pip)
+# If RDKit wheels fail on your machine, install RDKit via conda:
 conda install -c conda-forge rdkit
 ```
 
@@ -45,10 +47,10 @@ python train.py
 ### 3. Set your API keys
 Create a `.env` file in the root directory:
 ```env
-# Add whichever keys you prefer to use
-ANTHROPIC_API_KEY="sk-ant-..."
 GEMINI_API_KEY="AIzaSy..."
 ```
+
+The app works without `GEMINI_API_KEY`, but AI explanations/reports and AI design features will be disabled.
 
 ### 4. Launch the app
 ```bash
@@ -80,7 +82,6 @@ drug_toxicity_copilot/
 │   ├── counterfactual.py     # ★ Counterfactual molecule editor
 │   ├── batch_screener.py     # ★ Batch Compound Screening
 │   ├── similarity_search.py  # ★ Tanimoto Similarity Search
-│   ├── claude_api.py         # Claude API — explain, report, chat
 │   ├── gemini_api.py         # Gemini API integration
 │   └── visualizations.py     # All Plotly/Matplotlib charts
 ```
@@ -108,7 +109,7 @@ Given a toxic molecule, the system:
 
 This is what separates a *model* from a *drug discovery tool*.
 
-### 4. LLM / AI Layer (Claude & Gemini)
+### 4. LLM / AI Layer (Gemini)
 - Plain-English explanation of *why* a molecule is toxic (mechanism, biological targets)
 - Per-counterfactual explanation of *why* a modification works
 - Full structured research report (downloadable Markdown)
@@ -146,9 +147,8 @@ Toxicity mechanisms overlap. A molecule toxic to NR-AR often shares structural f
 
 ## 🙏 Datasets Used
 
-- **Primary:** [Tox21](https://www.kaggle.com/datasets/epicskills/tox21-dataset) — 8,014 compounds, 12 endpoints, loaded via DeepChem
-- **Secondary:** ZINC250k (for chemical space context)
-- **Libraries:** DeepChem, PyTorch Geometric, RDKit, XGBoost, SHAP
+- **Primary:** [Tox21](https://www.kaggle.com/datasets/epicskills/tox21-dataset) — 8,014 compounds, 12 endpoints (loaded from the included `tox21.csv` via pandas)
+- **Libraries:** PyTorch Geometric, RDKit, XGBoost, SHAP
 
 ---
 
