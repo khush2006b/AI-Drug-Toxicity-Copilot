@@ -1,0 +1,7 @@
+[project]
+name = "ai-drug-toxicity-copilot"
+version = "0.0.0"
+requires-python = ">=3.11,<3.12"
+
+# Note: This file is primarily to communicate Python compatibility to
+# deployment platforms and tooling. Dependencies are managed via requirements.txt.

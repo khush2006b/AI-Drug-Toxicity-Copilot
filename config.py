@@ -1,6 +1,14 @@
 import os
-from dotenv import load_dotenv
-load_dotenv()
+
+# Optional: local development convenience. On hosted environments (Streamlit Cloud)
+# you typically set secrets via the platform, so dotenv is not required.
+try:
+    from dotenv import load_dotenv  # type: ignore
+except Exception:
+    load_dotenv = None
+
+if load_dotenv is not None:
+    load_dotenv()
 
 
                                            
