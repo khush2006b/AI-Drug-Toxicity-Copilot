@@ -184,35 +184,18 @@ def mol_to_image(
     drawer.FinishDrawing()
     svg = drawer.GetDrawingText()
  
-    # Convert SVG → PNG via cairosvg if available, else fallback to rdkit PNG
+    # Convert SVG → PNG via cairosvg (avoid RDKit Cairo backend, which can segfault
+    # on minimal Linux images).
     try:
         import cairosvg
         png_bytes = cairosvg.svg2png(bytestring=svg.encode(), output_width=size[0])
         return Image.open(io.BytesIO(png_bytes))
-    except ImportError:
-        # Fallback: use RDKit's built-in PNG renderer
-        drawer2 = rdMolDraw2D.MolDraw2DCairo(size[0], size[1])
-        opts2 = drawer2.drawOptions()
-        opts2.addAtomIndices = False
-        opts2.addStereoAnnotation = True
-        if dark_mode:
-            opts2.clearBackground = False
-            if hasattr(rdMolDraw2D, 'SetDarkMode'):
-                rdMolDraw2D.SetDarkMode(opts2)
-        if highlight_atoms:
-            _draw_with_highlights_compat(
-                drawer2,
-                mol,
-                "",
-                a_colors,
-                b_colors,
-                {a: 0.5 for a in hl_atoms},
-                {b: 2.0 for b in hl_bonds},
-            )
-        else:
-            drawer2.DrawMolecule(mol)
-        drawer2.FinishDrawing()
-        return Image.open(io.BytesIO(drawer2.GetDrawingText()))
+    except Exception:
+        from PIL import ImageDraw
+        img = Image.new("RGB", size, color=(14, 17, 23))
+        d = ImageDraw.Draw(img)
+        d.text((12, 12), "SVG render ok, but PNG conversion failed\n(install cairosvg)", fill=(226, 232, 240))
+        return img
  
  
 def mol_to_atom_heatmap(
@@ -260,11 +243,12 @@ def mol_to_atom_heatmap(
         avg   = (scores[i] + scores[j]) / 2
         bond_colors[bond.GetIdx()] = score_to_rgb(avg)
  
-    drawer = rdMolDraw2D.MolDraw2DCairo(size[0], size[1])
+    drawer = rdMolDraw2D.MolDraw2DSVG(size[0], size[1])
     opts = drawer.drawOptions()
     opts.addAtomIndices      = False
     opts.addStereoAnnotation = False
     opts.clearBackground     = True
+
     # Use a runtime-compatible DrawMoleculeWithHighlights wrapper.
     try:
         drawer.DrawMoleculeWithHighlights(
@@ -287,7 +271,18 @@ def mol_to_atom_heatmap(
             {},
         )
     drawer.FinishDrawing()
-    return Image.open(io.BytesIO(drawer.GetDrawingText()))
+    svg = drawer.GetDrawingText()
+
+    try:
+        import cairosvg
+        png_bytes = cairosvg.svg2png(bytestring=svg.encode(), output_width=size[0])
+        return Image.open(io.BytesIO(png_bytes))
+    except Exception:
+        from PIL import ImageDraw
+        img = Image.new("RGB", size, color=(14, 17, 23))
+        d = ImageDraw.Draw(img)
+        d.text((12, 12), "Heatmap render failed\n(install cairosvg)", fill=(226, 232, 240))
+        return img
  
  
 def shap_to_atom_scores(mol: "Chem.Mol", all_shap: "np.ndarray", top_indices: "np.ndarray") -> "np.ndarray":
@@ -339,10 +334,39 @@ def get_substructure_atoms_bonds(
 def identify_toxic_fragments(mol: Chem.Mol) -> dict[str, bool]:
     """Check which known toxic SMARTS fragments are present."""
     from config import TOXIC_FRAGMENTS
+
+    def _split_top_level_commas(smarts: str) -> list[str]:
+        """Split `a,b,c` into patterns, but ignore commas inside `[...]`.
+
+        Example: `c[Br,I]` must NOT be split.
+        """
+        parts: list[str] = []
+        buf: list[str] = []
+        bracket_depth = 0
+        for ch in smarts:
+            if ch == "[":
+                bracket_depth += 1
+            elif ch == "]":
+                bracket_depth = max(0, bracket_depth - 1)
+
+            if ch == "," and bracket_depth == 0:
+                part = "".join(buf).strip()
+                if part:
+                    parts.append(part)
+                buf = []
+                continue
+            buf.append(ch)
+
+        tail = "".join(buf).strip()
+        if tail:
+            parts.append(tail)
+        return parts
+
     results = {}
     for name, smarts in TOXIC_FRAGMENTS.items():
-        # Handle comma-separated SMARTS (OR conditions)
-        patterns = smarts.split(",")
+        # Handle comma-separated SMARTS (OR conditions) while preserving commas
+        # inside bracket expressions like `c[Br,I]`.
+        patterns = _split_top_level_commas(smarts)
         found = False
         for pat in patterns:
             pat = pat.strip()

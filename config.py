@@ -58,7 +58,8 @@ TOXIC_FRAGMENTS = {
     "Aldehyde":             "[CX3H1](=O)",
     "Michael acceptor":     "C=CC=O",
     "Quinone":              "O=C1C=CC(=O)C=C1",
-    "Halogenated aromatic": "[cBr,cI]",
+    # Aromatic carbon bonded to Br or I
+    "Halogenated aromatic": "c[Br,I]",
 }
 
                                                                                 
@@ -82,7 +83,6 @@ EXAMPLE_MOLECULES = {
     "Aspirin (safe NSAID)":       "CC(=O)Oc1ccccc1C(=O)O",
     "Doxorubicin (toxic chemo)":  "COc1cccc2C(=O)c3c(O)c4c(c(O)c3C(=O)c12)C[C@@](O)(C(=O)CO)C[C@H]4O[C@H]1C[C@@H](N)[C@H](O)[C@@H](C)O1",
     "Tamoxifen (moderate)":       "CCC(=C(c1ccccc1)c1ccc(OCCN(C)C)cc1)c1ccccc1",
-    "Benzo[a]pyrene (carcinogen)":"c1ccc2ccc3cccc4ccc(c1)c2c34",
     "Nitrobenzene (toxic)":       "O=[N+]([O-])c1ccccc1",
     "Ibuprofen (safe NSAID)":     "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
 }
