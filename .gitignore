@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+*.virtualenv
+
+# Environment Variables / Secrets
+.env
+.env.local
+.streamlit/secrets.toml
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Project specific caches and temporary directories
+.commentless_tmp/
+.pytest_cache/
+.tox/
+coverage.xml
+htmlcov/
+.cache/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Model weights & large binaries (uncomment if you don't want to commit models)
+# *.pt
+# *.pth
+# *.pkl
+# *.joblib
+# models/*.pkl
+# models/*.pt
