@@ -151,7 +151,11 @@ def mol_to_image(
         from PIL import ImageDraw
         img = Image.new("RGB", size, color=(14, 17, 23))
         d = ImageDraw.Draw(img)
-        d.text((12, 12), "Molecule rendering unavailable\n(RDKit drawing backend missing)", fill=(226, 232, 240))
+        d.text(
+            (12, 12),
+            "Molecule rendering unavailable\n(RDKit drawing backend missing)",
+            fill=(226, 232, 240),
+        )
         return img
 
     rdDepictor.Compute2DCoords(mol)
@@ -210,13 +214,17 @@ def mol_to_atom_heatmap(
     This is the flagship visual that impresses judges instantly.
     """
     import numpy as np
+
+    # Guard against NumPy 2.x binary incompatibilities with RDKit drawing.
     try:
+        if int(np.__version__.split(".", 1)[0]) >= 2:
+            raise RuntimeError(f"Unsupported NumPy for RDKit drawing: {np.__version__}")
         from rdkit.Chem.Draw import rdMolDraw2D
     except Exception:
         from PIL import ImageDraw
         img = Image.new("RGB", size, color=(14, 17, 23))
         d = ImageDraw.Draw(img)
-        d.text((12, 12), "Atom heatmap unavailable\n(RDKit drawing backend missing)", fill=(226, 232, 240))
+        d.text((12, 12), f"Atom heatmap unavailable\n(NumPy {np.__version__} not supported by RDKit Draw)", fill=(226, 232, 240))
         return img
     rdDepictor.Compute2DCoords(mol)
     n = mol.GetNumAtoms()
