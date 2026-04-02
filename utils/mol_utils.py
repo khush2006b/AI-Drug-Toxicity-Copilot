@@ -1,3 +1,9 @@
+"""
+utils/mol_utils.py
+All RDKit-based helpers: descriptor computation, fingerprinting,
+molecule drawing, and SMILES validation.
+"""
+ 
 from __future__ import annotations
 import io
 import numpy as np
@@ -14,7 +20,7 @@ from rdkit.Chem import rdDepictor
 from PIL import Image
  
  
-                                                                                
+# ── Descriptor names (200 RDKit descriptors used as XGB features) ─────────────
 DESCRIPTOR_NAMES = [d[0] for d in Descriptors.descList[:200]]
  
  
@@ -93,7 +99,7 @@ def mol_to_image(
     """
 
     def _as_rgb_tuple(c) -> tuple[float, float, float]:
-                                                                   
+        # RDKit highlight colours are (r,g,b) with values in [0,1].
         if isinstance(c, (list, tuple)) and len(c) == 3:
             return (float(c[0]), float(c[1]), float(c[2]))
         raise TypeError(f"Invalid RGB colour: {c!r}")
@@ -126,7 +132,7 @@ def mol_to_image(
             )
             return
         except TypeError:
-                                                                            
+            # New multi-colour API: map each atom/bond to a LIST of colours.
             atom_map = {int(i): [_as_rgb_tuple(c)] for i, c in (atom_cols or {}).items()}
             bond_map = {int(i): [_as_rgb_tuple(c)] for i, c in (bond_cols or {}).items()}
             drawer_obj.DrawMoleculeWithHighlights(
@@ -134,8 +140,8 @@ def mol_to_image(
                 legend,
                 atom_map,
                 bond_map,
-                {},                          
-                {},                                          
+                {},  # highlight_radii (dict)
+                {},  # highlight_linewidth_multipliers (dict)
             )
     rdDepictor.Compute2DCoords(mol)
     drawer = rdMolDraw2D.MolDraw2DSVG(size[0], size[1])
@@ -168,13 +174,13 @@ def mol_to_image(
     drawer.FinishDrawing()
     svg = drawer.GetDrawingText()
  
-                                                                             
+    # Convert SVG → PNG via cairosvg if available, else fallback to rdkit PNG
     try:
         import cairosvg
         png_bytes = cairosvg.svg2png(bytestring=svg.encode(), output_width=size[0])
         return Image.open(io.BytesIO(png_bytes))
     except ImportError:
-                                                     
+        # Fallback: use RDKit's built-in PNG renderer
         drawer2 = rdMolDraw2D.MolDraw2DCairo(size[0], size[1])
         opts2 = drawer2.drawOptions()
         opts2.addAtomIndices = False
@@ -201,7 +207,7 @@ def mol_to_image(
  
 def mol_to_atom_heatmap(
     mol: Chem.Mol,
-    atom_scores: "np.ndarray",                                                
+    atom_scores: "np.ndarray",          # per-atom score 0-1 (0=safe, 1=toxic)
     size: tuple[int, int] = (500, 360),
     label: str = "",
 ) -> "Image.Image":
@@ -217,15 +223,15 @@ def mol_to_atom_heatmap(
     if scores.max() > scores.min():
         scores = (scores - scores.min()) / (scores.max() - scores.min())
  
-                                                 
+    # Map score → RGB: 0=green, 0.5=yellow, 1=red
     def score_to_rgb(s):
-                                                                   
+        # RDKit highlight colours are (r,g,b) with values in [0,1].
         if s < 0.5:
             t = float(s / 0.5)
-            return (t, 1.0, 0.0)                          
+            return (t, 1.0, 0.0)          # green → yellow
         else:
             t = float((s - 0.5) / 0.5)
-            return (1.0, 1.0 - t, 0.0)                  
+            return (1.0, 1.0 - t, 0.0)    # yellow → red
  
     atom_colors = {i: score_to_rgb(scores[i]) for i in range(n)}
     hl_atoms    = list(range(n))
@@ -241,7 +247,7 @@ def mol_to_atom_heatmap(
     opts.addAtomIndices      = False
     opts.addStereoAnnotation = False
     opts.clearBackground     = True
-                                                                  
+    # Use a runtime-compatible DrawMoleculeWithHighlights wrapper.
     try:
         drawer.DrawMoleculeWithHighlights(
             mol,
@@ -283,7 +289,7 @@ def shap_to_atom_scores(mol: "Chem.Mol", all_shap: "np.ndarray", top_indices: "n
         for bit_idx, atom_env_list in bi.items():
             if bit_idx < len(all_shap):
                 shap_val = float(all_shap[bit_idx])
-                if shap_val > 0:                                                        
+                if shap_val > 0:                   # only positive (toxic) contributions
                     for center_atom, _ in atom_env_list:
                         atom_scores[center_atom] += shap_val
     except Exception:
@@ -317,7 +323,7 @@ def identify_toxic_fragments(mol: Chem.Mol) -> dict[str, bool]:
     from config import TOXIC_FRAGMENTS
     results = {}
     for name, smarts in TOXIC_FRAGMENTS.items():
-                                                       
+        # Handle comma-separated SMARTS (OR conditions)
         patterns = smarts.split(",")
         found = False
         for pat in patterns:
